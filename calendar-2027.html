@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2027 Calendar</title>
+<style>
+  :root {
+    --ink: #1f2937;
+    --muted: #9ca3af;
+    --bg: #f4f6fb;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 40px 24px;
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .page-header h1 {
+    font-size: 72px;
+    letter-spacing: 8px;
+    margin: 0;
+    font-weight: 800;
+    background: linear-gradient(90deg,#60a5fa,#34d399,#fbbf24,#fb923c,#f472b6,#a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .page-header p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-size: 13px;
+  }
+
+  .calendar-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  /* Each .month gets its theme via inline custom props:
+     --accent, --soft, --head  */
+  .month {
+    --accent: #2563eb;
+    --soft: #eff6ff;
+    --head: #e0ecff;
+    --pat: rgba(37,99,235,0.07); /* pattern tint, per-season */
+    position: relative;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-top: 5px solid var(--accent);
+    border-radius: 14px;
+    padding: 0 16px 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  }
+
+  /* Seasonal background pattern layer — sits behind content */
+  .month::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+  .month > * { position: relative; z-index: 1; }
+
+  /* WINTER — falling snowflakes (radial dots at two scales) */
+  .season-winter::before {
+    background-image:
+      radial-gradient(var(--pat) 1.6px, transparent 1.7px),
+      radial-gradient(var(--pat) 1px, transparent 1.1px);
+    background-size: 34px 34px, 22px 22px;
+    background-position: 0 0, 11px 11px;
+  }
+
+  /* SPRING — scattered petals/flowers (soft blobs + tiny dots) */
+  .season-spring::before {
+    background-image:
+      radial-gradient(circle at 30% 30%, var(--pat) 5px, transparent 6px),
+      radial-gradient(circle at 70% 65%, var(--pat) 3px, transparent 4px),
+      radial-gradient(var(--pat) 1px, transparent 1.2px);
+    background-size: 56px 56px, 56px 56px, 18px 18px;
+    background-position: 0 0, 0 0, 9px 9px;
+  }
+
+  /* SUMMER — sun rays (diagonal stripes radiating warmth) */
+  .season-summer::before {
+    background-image: repeating-linear-gradient(
+      45deg, var(--pat) 0 8px, transparent 8px 22px);
+  }
+
+  /* AUTUMN — falling leaves (angled dashes at varied angles) */
+  .season-autumn::before {
+    background-image:
+      repeating-linear-gradient(60deg,  var(--pat) 0 2px, transparent 2px 26px),
+      repeating-linear-gradient(-60deg, var(--pat) 0 2px, transparent 2px 30px);
+  }
+
+  .month-head {
+    margin: 0 -16px 10px;
+    padding: 14px 16px 12px;
+    background: linear-gradient(180deg, var(--head), #ffffff);
+    text-align: center;
+  }
+  .month-head .icon { font-size: 26px; line-height: 1; }
+  .month-head h2 {
+    margin: 4px 0 2px;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--accent);
+  }
+  .month-head .season {
+    font-size: 10.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  th {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    opacity: 0.75;
+    padding: 6px 0;
+    text-transform: uppercase;
+  }
+  td {
+    text-align: center;
+    padding: 7px 0;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  th.we, td.we { color: #ef4444; }
+  td.day { transition: background .15s; }
+  td.day:hover { background: var(--soft); cursor: default; }
+
+  td.holiday {
+    background: var(--accent);
+    color: #fff !important;
+    font-weight: 700;
+    position: relative;
+    cursor: help;
+  }
+  td.holiday:hover::after {
+    content: attr(data-holiday);
+    position: absolute;
+    left: 50%;
+    bottom: 115%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 6px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .legend {
+    max-width: 1200px;
+    margin: 28px auto 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 18px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  footer {
+    text-align: center;
+    margin-top: 28px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .calendar-grid { grid-template-columns: repeat(2, 1fr); }
+    .page-header h1 { font-size: 52px; }
+  }
+  @media (max-width: 600px) {
+    .calendar-grid { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    body { padding: 12px; background: #fff; }
+    .calendar-grid { gap: 10px; max-width: 100%; }
+    .month { break-inside: avoid; box-shadow: none; padding: 0 8px 8px; }
+    .page-header h1 { font-size: 40px; }
+    footer, .legend { display: none; }
+    td.holiday { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .month::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>2027</h1>
+    <p>A Year in Color</p>
+  </header>
+
+  <main class="calendar-grid" id="calendar"></main>
+
+  <div class="legend" id="legend"></div>
+
+  <footer>Themed by season &amp; holiday &middot; weeks start Monday &middot; hover a colored date for the holiday</footer>
+
+<script>
+  const YEAR = 2027;
+  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  // Per-month theme: color trio + emoji + season label.
+  // accent = main color, soft = hover wash, head = header gradient top.
+  const THEMES = [
+    { name:"January",   icon:"❄️", season:"Winter",        pat:"winter", accent:"#2563eb", soft:"#e8f0ff", head:"#dbe8ff" },
+    { name:"February",  icon:"💗", season:"Winter · Love", pat:"winter", accent:"#e11d8f", soft:"#ffe8f4", head:"#ffdcef" },
+    { name:"March",     icon:"🍀", season:"Spring begins", pat:"spring", accent:"#16a34a", soft:"#e7f8ec", head:"#d6f3df" },
+    { name:"April",     icon:"🌷", season:"Spring",        pat:"spring", accent:"#9333ea", soft:"#f4e8ff", head:"#ebd9ff" },
+    { name:"May",       icon:"🌸", season:"Spring",        pat:"spring", accent:"#ec4899", soft:"#ffe9f3", head:"#ffd9eb" },
+    { name:"June",      icon:"☀️", season:"Summer begins", pat:"summer", accent:"#f59e0b", soft:"#fff3da", head:"#ffedc6" },
+    { name:"July",      icon:"🎆", season:"Summer",        pat:"summer", accent:"#dc2626", soft:"#ffe6e6", head:"#ffd6d6" },
+    { name:"August",    icon:"🌊", season:"Summer",        pat:"summer", accent:"#0891b2", soft:"#e2f6fb", head:"#cdeff6" },
+    { name:"September", icon:"🍁", season:"Autumn begins", pat:"autumn", accent:"#ea580c", soft:"#ffeede", head:"#ffe1c7" },
+    { name:"October",   icon:"🎃", season:"Autumn",        pat:"autumn", accent:"#7c3aed", soft:"#efe7ff", head:"#e2d4ff" },
+    { name:"November",  icon:"🦃", season:"Autumn",        pat:"autumn", accent:"#b45309", soft:"#fbefdf", head:"#f6e2c8" },
+    { name:"December",  icon:"🎄", season:"Winter",        pat:"winter", accent:"#15803d", soft:"#e6f6ec", head:"#d4f0dc" },
+  ];
+
+  // Convert an accent hex to a translucent rgba tint for the pattern layer.
+  function tint(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // Holidays keyed by "month-day" (month 0-indexed). Dates verified for 2027.
+  const HOLIDAYS = {
+    "0-1":   "New Year's Day",
+    "0-18":  "Martin Luther King Jr. Day",
+    "1-2":   "Groundhog Day",
+    "1-14":  "Valentine's Day",
+    "1-15":  "Presidents' Day",
+    "2-17":  "St. Patrick's Day",
+    "2-20":  "Spring Equinox",
+    "3-1":   "April Fools' Day",
+    "3-22":  "Earth Day",
+    "3-28":  "Easter Sunday",
+    "4-5":   "Cinco de Mayo",
+    "4-9":   "Mother's Day",
+    "4-31":  "Memorial Day",
+    "5-19":  "Juneteenth",
+    "5-20":  "Father's Day",
+    "5-21":  "Summer Solstice",
+    "6-4":   "Independence Day",
+    "8-6":   "Labor Day",
+    "8-23":  "Autumn Equinox",
+    "9-11":  "Indigenous Peoples' / Columbus Day",
+    "9-31":  "Halloween",
+    "10-11": "Veterans Day",
+    "10-25": "Thanksgiving",
+    "11-21": "Winter Solstice",
+    "11-25": "Christmas Day",
+    "11-31": "New Year's Eve",
+  };
+
+  function buildMonth(month) {
+    const t = THEMES[month];
+    const section = document.createElement("section");
+    section.className = "month season-" + t.pat;
+    section.style.setProperty("--accent", t.accent);
+    section.style.setProperty("--soft", t.soft);
+    section.style.setProperty("--head", t.head);
+    // Pattern tint derived from the month's accent (summer a touch stronger).
+    section.style.setProperty("--pat", tint(t.accent, t.pat === "summer" ? 0.06 : 0.08));
+
+    const head = document.createElement("div");
+    head.className = "month-head";
+    head.innerHTML =
+      `<div class="icon">${t.icon}</div>` +
+      `<h2>${t.name}</h2>` +
+      `<div class="season">${t.season}</div>`;
+    section.appendChild(head);
+
+    const table = document.createElement("table");
+
+    const thead = document.createElement("thead");
+    const hrow = document.createElement("tr");
+    DOW.forEach((d, i) => {
+      const th = document.createElement("th");
+      th.textContent = d;
+      if (i >= 5) th.className = "we";
+      hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    const firstDay = new Date(YEAR, month, 1).getDay(); // 0=Sun
+    const offset = (firstDay + 6) % 7;                  // Monday-start
+    const daysInMonth = new Date(YEAR, month + 1, 0).getDate();
+
+    let day = 1;
+    for (let week = 0; week < 6; week++) {
+      const row = document.createElement("tr");
+      let rowHasDay = false;
+      for (let col = 0; col < 7; col++) {
+        const td = document.createElement("td");
+        if ((week === 0 && col < offset) || day > daysInMonth) {
+          td.innerHTML = "&nbsp;";
+        } else {
+          td.textContent = day;
+          td.className = "day";
+          if (col >= 5) td.className += " we";
+          const key = month + "-" + day;
+          if (HOLIDAYS[key]) {
+            td.className += " holiday";
+            td.setAttribute("data-holiday", HOLIDAYS[key]);
+          }
+          day++;
+          rowHasDay = true;
+        }
+        row.appendChild(td);
+      }
+      if (rowHasDay) tbody.appendChild(row);
+    }
+
+    table.appendChild(tbody);
+    section.appendChild(table);
+    return section;
+  }
+
+  const container = document.getElementById("calendar");
+  for (let m = 0; m < 12; m++) container.appendChild(buildMonth(m));
+
+  // Season legend
+  const SEASONS = [
+    { label:"Winter", color:"#2563eb" },
+    { label:"Spring", color:"#16a34a" },
+    { label:"Summer", color:"#f59e0b" },
+    { label:"Autumn", color:"#ea580c" },
+    { label:"Holiday date", color:"#7c3aed" },
+  ];
+  const legend = document.getElementById("legend");
+  SEASONS.forEach(s => {
+    const span = document.createElement("span");
+    span.innerHTML = `<i style="background:${s.color}"></i>${s.label}`;
+    legend.appendChild(span);
+  });
+</script>
+</body>
+</html>
